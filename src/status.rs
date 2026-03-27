@@ -1,28 +1,3 @@
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn active_state_colors_are_distinct() {
-        assert_ne!(
-            UnitActiveState::Active.status_color(),
-            UnitActiveState::Failed.status_color()
-        );
-        assert_eq!(
-            UnitActiveState::Inactive.status_color(),
-            UnitActiveState::Unknown.status_color()
-        );
-    }
-
-    #[test]
-    fn active_state_bg_inactive_equals_unknown() {
-        assert_eq!(
-            UnitActiveState::Inactive.status_bg(),
-            UnitActiveState::Unknown.status_bg()
-        );
-    }
-}
-
 /// Display trait for `UnitActiveState` — single source of truth for status
 /// label, foreground color, and background color used across all views.
 ///
@@ -70,5 +45,30 @@ impl UnitActiveStateDisplay for UnitActiveState {
             UnitActiveState::Deactivating => "rgba(251,191,36,0.1)",
             UnitActiveState::Failed => "rgba(239,68,68,0.1)",
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn active_state_colors_are_distinct() {
+        assert_ne!(
+            UnitActiveState::Active.status_color(),
+            UnitActiveState::Failed.status_color()
+        );
+        assert_eq!(
+            UnitActiveState::Inactive.status_color(),
+            UnitActiveState::Unknown.status_color()
+        );
+    }
+
+    #[test]
+    fn active_state_bg_inactive_equals_unknown() {
+        assert_eq!(
+            UnitActiveState::Inactive.status_bg(),
+            UnitActiveState::Unknown.status_bg()
+        );
     }
 }
