@@ -140,7 +140,7 @@ pub fn Container() -> Element {
                                 div { style: "flex: 1; overflow: hidden;",
                                     ServiceDetail {
                                         service_name: name,
-                                        on_close: move |()| *selected_service.write() = None,
+                                        on_close: move |_| *selected_service.write() = None,
                                     }
                                 }
                             }

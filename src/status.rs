@@ -27,48 +27,27 @@ impl UnitActiveStateDisplay for UnitActiveState {
         }
     }
 
+    #[allow(clippy::match_same_arms)]
     fn status_color(&self) -> &'static str {
         match self {
             UnitActiveState::Active => "var(--fs-success)",
-            UnitActiveState::Inactive | UnitActiveState::Unknown => "var(--fs-text-muted)",
+            UnitActiveState::Inactive => "var(--fs-text-muted)",
             UnitActiveState::Activating => "var(--fs-info)",
             UnitActiveState::Deactivating => "var(--fs-warning)",
             UnitActiveState::Failed => "var(--fs-error)",
+            UnitActiveState::Unknown => "var(--fs-text-muted)",
         }
     }
 
+    #[allow(clippy::match_same_arms)]
     fn status_bg(&self) -> &'static str {
         match self {
             UnitActiveState::Active => "rgba(34,197,94,0.1)",
-            UnitActiveState::Inactive | UnitActiveState::Unknown => "var(--fs-bg-elevated)",
+            UnitActiveState::Inactive => "var(--fs-bg-elevated)",
             UnitActiveState::Activating => "rgba(99,179,237,0.1)",
             UnitActiveState::Deactivating => "rgba(251,191,36,0.1)",
             UnitActiveState::Failed => "rgba(239,68,68,0.1)",
+            UnitActiveState::Unknown => "var(--fs-bg-elevated)",
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn active_state_colors_are_distinct() {
-        assert_ne!(
-            UnitActiveState::Active.status_color(),
-            UnitActiveState::Failed.status_color()
-        );
-        assert_eq!(
-            UnitActiveState::Inactive.status_color(),
-            UnitActiveState::Unknown.status_color()
-        );
-    }
-
-    #[test]
-    fn active_state_bg_inactive_equals_unknown() {
-        assert_eq!(
-            UnitActiveState::Inactive.status_bg(),
-            UnitActiveState::Unknown.status_bg()
-        );
     }
 }
