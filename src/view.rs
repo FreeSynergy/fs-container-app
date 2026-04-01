@@ -44,18 +44,14 @@ impl FsView for ContainerAppView {
         Box::new(ListWidget {
             id: "container-list".into(),
             items,
-            selected_index: self
-                .model
-                .active
-                .as_ref()
-                .and_then(|a| {
-                    self.model
+            selected_index: self.model.active.as_ref().and_then(|a| {
+                self.model
                         .containers
                         .iter()
                         .position(|c| &c.name == a)
                         // +1 for the refresh button at index 0
                         .map(|i| i + 1)
-                }),
+            }),
             enabled: !self.model.loading,
         })
     }

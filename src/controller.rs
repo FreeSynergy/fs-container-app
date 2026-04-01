@@ -4,7 +4,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use fs_container::{ContainerEngine, ServiceStatus};
+use fs_container::ContainerEngine;
 
 use crate::model::{ContainerAppModel, ContainerEntry};
 
@@ -32,13 +32,13 @@ impl<E: ContainerEngine + Send + Sync + 'static> ContainerAppController<E> {
     }
 
     /// Reload the container list from the engine.
-    pub fn refresh(&self) {
-        let services = self.engine.list().unwrap_or_default();
+    pub async fn refresh(&self) {
+        let services = self.engine.list().await.unwrap_or_default();
         let containers = services
             .into_iter()
             .map(|s| ContainerEntry {
                 name: s.name.clone(),
-                state_label: format!("{:?}", s.state),
+                state_label: format!("{:?}", s.active_state),
             })
             .collect();
         let mut guard = self.state.lock().unwrap();
@@ -47,18 +47,18 @@ impl<E: ContainerEngine + Send + Sync + 'static> ContainerAppController<E> {
     }
 
     /// Start a container service by name.
-    pub fn start(&self, name: &str) -> Result<(), String> {
-        self.engine.start(name).map_err(|e| e.to_string())
+    pub async fn start(&self, name: &str) -> Result<(), String> {
+        self.engine.start(name).await.map_err(|e| e.to_string())
     }
 
     /// Stop a container service by name.
-    pub fn stop(&self, name: &str) -> Result<(), String> {
-        self.engine.stop(name).map_err(|e| e.to_string())
+    pub async fn stop(&self, name: &str) -> Result<(), String> {
+        self.engine.stop(name).await.map_err(|e| e.to_string())
     }
 
     /// Retrieve log lines for a container.
-    pub fn logs(&self, name: &str, lines: usize) -> Vec<String> {
-        self.engine.logs(name, lines).unwrap_or_default()
+    pub async fn logs(&self, name: &str, lines: usize) -> Vec<String> {
+        self.engine.logs(name, lines).await.unwrap_or_default()
     }
 }
 
@@ -77,33 +77,44 @@ impl<E: ContainerEngine + Send + Sync + 'static> Clone for ContainerAppControlle
 pub(crate) struct StubEngine;
 
 #[cfg(test)]
+#[async_trait::async_trait]
 impl ContainerEngine for StubEngine {
-    type Error = String;
-
-    fn list(&self) -> Result<Vec<ServiceStatus>, Self::Error> {
-        Ok(vec![ServiceStatus {
+    async fn list(&self) -> Result<Vec<fs_container::systemctl::ServiceStatus>, fs_error::FsError> {
+        Ok(vec![fs_container::systemctl::ServiceStatus {
             name: "test-svc".into(),
-            state: fs_container::systemctl::UnitActiveState::Active,
+            active_state: fs_container::systemctl::UnitActiveState::Active,
+            sub_state: "running".into(),
             description: String::new(),
         }])
     }
-    fn start(&self, _name: &str) -> Result<(), Self::Error> {
+    async fn start(&self, _name: &str) -> Result<(), fs_error::FsError> {
         Ok(())
     }
-    fn stop(&self, _name: &str) -> Result<(), Self::Error> {
+    async fn stop(&self, _name: &str) -> Result<(), fs_error::FsError> {
         Ok(())
     }
-    fn logs(&self, _name: &str, _lines: usize) -> Result<Vec<String>, Self::Error> {
+    async fn restart(&self, _name: &str) -> Result<(), fs_error::FsError> {
+        Ok(())
+    }
+    async fn remove(&self, _name: &str) -> Result<(), fs_error::FsError> {
+        Ok(())
+    }
+    async fn status(
+        &self,
+        _name: &str,
+    ) -> Result<fs_container::systemctl::ServiceStatus, fs_error::FsError> {
+        Ok(fs_container::systemctl::ServiceStatus {
+            name: "test-svc".into(),
+            active_state: fs_container::systemctl::UnitActiveState::Active,
+            sub_state: "running".into(),
+            description: String::new(),
+        })
+    }
+    async fn logs(&self, _name: &str, _lines: usize) -> Result<Vec<String>, fs_error::FsError> {
         Ok(vec!["log line 1".into()])
     }
-    fn deploy(&self, _config: &fs_container::ServiceConfig) -> Result<(), Self::Error> {
+    async fn deploy(&self, _config: &fs_container::ServiceConfig) -> Result<(), fs_error::FsError> {
         Ok(())
-    }
-    fn remove(&self, _name: &str) -> Result<(), Self::Error> {
-        Ok(())
-    }
-    fn status(&self, _name: &str) -> Result<Option<ServiceStatus>, Self::Error> {
-        Ok(None)
     }
 }
 
@@ -117,33 +128,33 @@ mod tests {
         ContainerAppController::new(StubEngine)
     }
 
-    #[test]
-    fn refresh_populates_list() {
+    #[tokio::test]
+    async fn refresh_populates_list() {
         let ctrl = ctrl();
-        ctrl.refresh();
+        ctrl.refresh().await;
         assert_eq!(ctrl.snapshot().containers.len(), 1);
     }
 
-    #[test]
-    fn start_returns_ok() {
-        assert!(ctrl().start("test-svc").is_ok());
+    #[tokio::test]
+    async fn start_returns_ok() {
+        assert!(ctrl().start("test-svc").await.is_ok());
     }
 
-    #[test]
-    fn stop_returns_ok() {
-        assert!(ctrl().stop("test-svc").is_ok());
+    #[tokio::test]
+    async fn stop_returns_ok() {
+        assert!(ctrl().stop("test-svc").await.is_ok());
     }
 
-    #[test]
-    fn logs_returns_lines() {
-        let lines = ctrl().logs("test-svc", 10);
+    #[tokio::test]
+    async fn logs_returns_lines() {
+        let lines = ctrl().logs("test-svc", 10).await;
         assert!(!lines.is_empty());
     }
 
-    #[test]
-    fn snapshot_after_refresh_has_containers() {
+    #[tokio::test]
+    async fn snapshot_after_refresh_has_containers() {
         let ctrl = ctrl();
-        ctrl.refresh();
+        ctrl.refresh().await;
         let snap = ctrl.snapshot();
         assert!(!snap.containers.is_empty());
         assert_eq!(snap.containers[0].name, "test-svc");

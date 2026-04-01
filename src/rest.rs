@@ -8,14 +8,14 @@ use axum::{
 };
 use fs_container::ContainerEngine;
 use serde::Deserialize;
-use utoipa::{OpenApi, ToSchema};
+use utoipa::{IntoParams, OpenApi, ToSchema};
 
 use crate::controller::ContainerAppController;
 use crate::model::ContainerEntry;
 
 // ── OpenAPI doc ───────────────────────────────────────────────────────────────
 
-#[allow(clippy::needless_for_each)]
+#[allow(clippy::needless_for_each)] // triggered by utoipa macro internals
 #[derive(OpenApi)]
 #[openapi(
     paths(list_services, start_service, stop_service, get_logs),
@@ -25,9 +25,10 @@ pub struct ApiDoc;
 
 // ── Query params ──────────────────────────────────────────────────────────────
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
 pub struct LogsQuery {
     #[serde(default = "default_lines")]
+    #[param(default = 50)]
     pub lines: usize,
 }
 
@@ -55,7 +56,7 @@ pub fn router<E: ContainerEngine + Send + Sync + 'static>(
 async fn list_services<E: ContainerEngine + Send + Sync + 'static>(
     State(ctrl): State<ContainerAppController<E>>,
 ) -> Json<Vec<ContainerEntry>> {
-    ctrl.refresh();
+    ctrl.refresh().await;
     Json(ctrl.snapshot().containers)
 }
 
@@ -70,7 +71,7 @@ async fn start_service<E: ContainerEngine + Send + Sync + 'static>(
     State(ctrl): State<ContainerAppController<E>>,
     Path(name): Path<String>,
 ) -> StatusCode {
-    match ctrl.start(&name) {
+    match ctrl.start(&name).await {
         Ok(()) => StatusCode::OK,
         Err(_) => StatusCode::BAD_REQUEST,
     }
@@ -87,7 +88,7 @@ async fn stop_service<E: ContainerEngine + Send + Sync + 'static>(
     State(ctrl): State<ContainerAppController<E>>,
     Path(name): Path<String>,
 ) -> StatusCode {
-    match ctrl.stop(&name) {
+    match ctrl.stop(&name).await {
         Ok(()) => StatusCode::OK,
         Err(_) => StatusCode::BAD_REQUEST,
     }
@@ -108,5 +109,5 @@ async fn get_logs<E: ContainerEngine + Send + Sync + 'static>(
     Path(name): Path<String>,
     Query(q): Query<LogsQuery>,
 ) -> Json<Vec<String>> {
-    Json(ctrl.logs(&name, q.lines))
+    Json(ctrl.logs(&name, q.lines).await)
 }

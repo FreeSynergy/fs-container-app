@@ -26,7 +26,9 @@ pub struct GrpcContainerApp<E: ContainerEngine + Send + Sync + 'static> {
 impl<E: ContainerEngine + Send + Sync + 'static> GrpcContainerApp<E> {
     #[must_use]
     pub fn new(ctrl: ContainerAppController<E>) -> Self {
-        Self { ctrl: Arc::new(ctrl) }
+        Self {
+            ctrl: Arc::new(ctrl),
+        }
     }
 }
 
@@ -36,7 +38,7 @@ impl<E: ContainerEngine + Send + Sync + 'static> ContainerAppService for GrpcCon
         &self,
         _req: Request<ListServicesRequest>,
     ) -> Result<Response<ListServicesResponse>, Status> {
-        self.ctrl.refresh();
+        self.ctrl.refresh().await;
         let services = self
             .ctrl
             .snapshot()
@@ -55,12 +57,15 @@ impl<E: ContainerEngine + Send + Sync + 'static> ContainerAppService for GrpcCon
         req: Request<StartServiceRequest>,
     ) -> Result<Response<StartServiceResponse>, Status> {
         let name = req.into_inner().name;
-        match self.ctrl.start(&name) {
+        match self.ctrl.start(&name).await {
             Ok(()) => Ok(Response::new(StartServiceResponse {
                 ok: true,
                 error: String::new(),
             })),
-            Err(e) => Ok(Response::new(StartServiceResponse { ok: false, error: e })),
+            Err(e) => Ok(Response::new(StartServiceResponse {
+                ok: false,
+                error: e,
+            })),
         }
     }
 
@@ -69,12 +74,15 @@ impl<E: ContainerEngine + Send + Sync + 'static> ContainerAppService for GrpcCon
         req: Request<StopServiceRequest>,
     ) -> Result<Response<StopServiceResponse>, Status> {
         let name = req.into_inner().name;
-        match self.ctrl.stop(&name) {
+        match self.ctrl.stop(&name).await {
             Ok(()) => Ok(Response::new(StopServiceResponse {
                 ok: true,
                 error: String::new(),
             })),
-            Err(e) => Ok(Response::new(StopServiceResponse { ok: false, error: e })),
+            Err(e) => Ok(Response::new(StopServiceResponse {
+                ok: false,
+                error: e,
+            })),
         }
     }
 

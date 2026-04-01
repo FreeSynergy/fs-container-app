@@ -15,6 +15,7 @@
 #![allow(clippy::needless_pass_by_value)]
 #![allow(clippy::return_self_not_must_use)]
 #![allow(clippy::missing_panics_doc)]
+#![allow(clippy::needless_for_each)]
 
 pub mod cli;
 pub mod controller;
