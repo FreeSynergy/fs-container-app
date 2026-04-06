@@ -22,9 +22,11 @@ pub mod controller;
 pub mod grpc;
 pub mod model;
 pub mod rest;
+pub mod settings_container_component;
 pub mod status;
 pub mod view;
 
 pub use controller::ContainerAppController;
 pub use model::{ContainerAppModel, ContainerEntry};
+pub use settings_container_component::SettingsContainerComponent;
 pub use view::ContainerAppView;
